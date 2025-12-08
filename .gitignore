@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Models (Too large for GitHub)
+models/
+
+# Logs
+*.log
+
+# User Data
+history.json
+
+# IDE
+.vscode/
+.idea/

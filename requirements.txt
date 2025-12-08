@@ -1,0 +1,7 @@
+SpeechRecognition
+pyaudio
+setuptools
+openai-whisper
+soundfile
+PyQt6
+vosk
