@@ -10,6 +10,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Linux-green.svg)
 ![Claude](https://img.shields.io/badge/AI-Claude-orange.svg)
+![Language](https://img.shields.io/badge/Language-French-red.svg)
 
 <img src="./logo.png" alt="Claude Overlay" width="200"/>
 
@@ -26,6 +27,9 @@
 | 📝 **Transcription** | Uses Whisper for accurate understanding |
 | 🧠 **Intelligence** | Connected to Claude API for responses and complex commands |
 | 🚀 **Control** | Launch applications and web navigation |
+
+> ⚠️ **Language Support**: This project currently only supports **French** voice commands. 
+> The Vosk wake word model and Whisper transcription are configured for French.
 
 ---
 
@@ -63,14 +67,14 @@ source venv/bin/activate
 python main.py
 ```
 
-### Voice Commands
+### Voice Commands (French)
 
-| Action | Say |
-|--------|-----|
+| Action | Say (French) |
+|--------|--------------|
 | 🟢 **Activate** | "Claude" |
-| 💬 **Command** | Ask your question or give an order |
-| ✅ **Finish** | "End Claude" or "Send" or "Done" |
-| ❌ **Cancel** | "Thanks" or "Stop" |
+| 💬 **Command** | Posez votre question ou donnez un ordre |
+| ✅ **Finish** | "Fin Claude" ou "Envoyer" ou "Terminé" |
+| ❌ **Cancel** | "Merci" ou "Stop" ou "Arrête" |
 
 ---
 

@@ -367,7 +367,7 @@ class AudioWorker(QThread):
                         wf.close()
                         
                         # Transcription
-                        result = whisper_model.transcribe(temp_wav_path, fp16=False, language='en') # Can force 'en' or leave auto
+                        result = whisper_model.transcribe(temp_wav_path, fp16=False, language='fr') # French language for transcription
                         # Note: fp16=False to avoid CPU warning
                         
                         command_text = result["text"].strip()
