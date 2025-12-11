@@ -8,14 +8,14 @@ class ClaudeOverlay(QWidget):
         self.initUI()
         self.state = "IDLE" # IDLE, LISTENING, PROCESSING, SUCCESS
         
-        # Paramètres d'animation
+        # Animation parameters
         self.anim_timer = QTimer(self)
         self.anim_timer.timeout.connect(self.animate)
         self.anim_timer.start(16) # ~60 FPS
         
-        self.pulse_phase = 0.0 # Pour le breathing
-        self.ripple_phase = 0.0 # Pour les ondes
-        self.morph_factor = 0.0 # Pour déformer le logo (si besoin)
+        self.pulse_phase = 0.0 # For breathing
+        self.ripple_phase = 0.0 # For waves
+        self.morph_factor = 0.0 # To deform the logo (if needed)
 
     def initUI(self):
         self.setObjectName("claude-overlay")
@@ -23,30 +23,30 @@ class ClaudeOverlay(QWidget):
         self.setWindowFlags(Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
-        # Force la transparence absolue du fond de la fenêtre
+        # Force absolute transparency of the window background
         self.setStyleSheet("background: transparent;")
         
-        # Variables pour le déplacement de la fenêtre
+        # Variables for window movement
         self.oldPos = self.pos()
 
 
         
-        # Taille minimale pour le logo
-        # Plus de taille minimale fixe qui bloque, on laisse le contenu décider
+        # Minimum size for the logo
+        # No more fixed minimum size that blocks, we let the content decide
         # self.setMinimumSize(600, 350) 
         
         # Layout
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # On garde de la marge pour le logo en haut (augmenté pour éviter coupure)
+        # We keep margin for the logo at the top (increased to avoid clipping)
         layout.setContentsMargins(20, 220, 20, 50)
-        # Cette contrainte permet à la fenêtre de grandir et rapetisser selon le contenu
+        # This constraint allows the window to grow and shrink according to the content
         layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinAndMaxSize)
         self.setLayout(layout)
 
-        # Label Texte
+        # Text Label
         self.status_label = QLabel("Claude")
-        font = QFont("Segoe UI", 18) # Retour à une taille élégante
+        font = QFont("Segoe UI", 18) # Back to an elegant size
         font.setBold(True)
         self.status_label.setFont(font)
         self.status_label.setStyleSheet("""
@@ -60,10 +60,10 @@ class ClaudeOverlay(QWidget):
         """)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setWordWrap(True)
-        self.status_label.setMaximumWidth(1000) # Beaucoup plus large pour éviter l'effet "colonne"
+        self.status_label.setMaximumWidth(1000) # Much wider to avoid the "column" effect
         self.status_label.setMinimumWidth(400)
         
-        # Policy pour que le label s'étende bien
+        # Policy so that the label expands properly
         from PyQt6.QtWidgets import QSizePolicy
         self.status_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
         
@@ -81,7 +81,7 @@ class ClaudeOverlay(QWidget):
 
     def center_on_screen(self):
         screen = QApplication.primaryScreen().geometry()
-        # Positionnement INITIAL au CENTRE
+        # INITIAL positioning at CENTER
         self.move(
             (screen.width() - self.width()) // 2,
             (screen.height() - self.height()) // 2
@@ -89,17 +89,17 @@ class ClaudeOverlay(QWidget):
 
     def update_layout_and_center(self):
         self.status_label.adjustSize()
-        self.adjustSize() # La fenêtre s'adapte au contenu
-        self.center_on_screen() # On recentre car la taille a changé
+        self.adjustSize() # The window adapts to the content
+        self.center_on_screen() # Re-center since the size has changed
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
         center_x = self.width() / 2
-        center_y = 160 # Logo descendu pour ne pas couper l'animation
+        center_y = 160 # Logo lowered to not clip the animation
         
-        # 1. Animation RIPPLE (Ondes)
+        # 1. RIPPLE Animation (Waves)
         if self.state == "LISTENING":
             for i in range(3):
                 phase_offset = i * 20
@@ -112,32 +112,32 @@ class ClaudeOverlay(QWidget):
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(int(center_x - r), int(center_y - r), int(r*2), int(r*2))
 
-        # 2. Dessin du Logo "Image PNG"
+        # 2. Draw the Logo "PNG Image"
         import math
         breath = math.sin(self.pulse_phase) * 0.05 + 1.0
-        base_size = 100 # Taille de base du logo
+        base_size = 100 # Base logo size
         size = base_size * breath
         
         painter.translate(center_x, center_y)
         
-        # Chargement de l'image
+        # Load the image
         import os
         logo_path = os.path.abspath("logo.png")
         pixmap = QPixmap(logo_path)
         
         if not pixmap.isNull():
-            # On redimensionne l'image pour qu'elle corresponde à la taille voulue (avec l'effet de respiration)
+            # Resize the image to match the desired size (with breathing effect)
             scaled_pixmap = pixmap.scaled(
                 int(size), int(size),
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )
             
-            # On dessine l'image centrée sur (0,0) car on a déjà fait un translate
+            # Draw the image centered at (0,0) since we already translated
             painter.drawPixmap(int(-size/2), int(-size/2), scaled_pixmap)
         else:
-            print(f"ERREUR: Impossible de charger l'image depuis {logo_path}")
-            # Fallback si l'image n'est pas trouvée (Ancien dessin)
+            print(f"ERROR: Cannot load image from {logo_path}")
+            # Fallback if the image is not found (Old drawing)
             claude_color = QColor(217, 119, 87)
             if self.state == "PROCESSING":
                  claude_color = QColor(255, 150, 120)
@@ -161,10 +161,10 @@ class ClaudeOverlay(QWidget):
         self.update()
 
     def show_listening(self):
-        # Si on vient d'afficher une réponse (SUCCESS), on GARDE le texte pour que l'utilisateur puisse le lire
-        # On ne change que l'état pour relancer l'animation (Ripples)
+        # If we just displayed a response (SUCCESS), we KEEP the text so the user can read it
+        # We only change the state to restart the animation (Ripples)
         if self.state != "SUCCESS":
-            self.status_label.setText("J'écoute...")
+            self.status_label.setText("Listening...")
             
         self.state = "LISTENING"
         self.show()
@@ -183,7 +183,7 @@ class ClaudeOverlay(QWidget):
         self.status_label.setText(message)
         self.status_label.show()
         self.update_layout_and_center()
-        # On ne cache PLUS automatiquement ici, car le worker gère la boucle
+        # We no longer hide automatically here, because the worker manages the loop
         # QTimer.singleShot(3000, self.hide_overlay) 
 
     def handle_error(self, message):

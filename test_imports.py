@@ -1,5 +1,5 @@
 import sys
-print("Test imports...")
+print("Testing imports...")
 try:
     print("Import PyQt6...")
     from PyQt6.QtWidgets import QApplication
@@ -9,6 +9,6 @@ try:
     import speech_recognition as sr
     print("Import worker...")
     import worker
-    print("Tout est OK")
+    print("Everything is OK")
 except Exception as e:
-    print(f"Erreur import: {e}")
+    print(f"Import error: {e}")

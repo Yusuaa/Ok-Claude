@@ -4,7 +4,7 @@ import speech_recognition as sr
 import subprocess
 import time
 
-# Historique de la conversation
+# Conversation history
 import json
 import os
 
@@ -24,7 +24,7 @@ def save_history(history):
         with open(HISTORY_FILE, "w") as f:
             json.dump(history, f)
     except Exception as e:
-        print(f"Erreur sauvegarde historique: {e}")
+        print(f"Error saving history: {e}")
 
 conversation_history = load_history()
 
@@ -38,15 +38,15 @@ class AudioWorker(QThread):
 
     def __init__(self):
         super().__init__()
-        self.current_llm_process = None # Pour stocker le processus Claude en cours
+        self.current_llm_process = None # To store the current Claude process
         self.is_processing_llm = False
 
     def run(self):
-        print("Worker thread démarré")
+        print("Worker thread started")
         self.listen_and_process()
 
     def run_claude_async(self, full_prompt, command_part):
-        """Exécute Claude dans un thread séparé pour ne pas bloquer l'écoute."""
+        """Runs Claude in a separate thread to avoid blocking listening."""
         global conversation_history # Ensure global access
         self.is_processing_llm = True
         try:
@@ -60,7 +60,7 @@ class AudioWorker(QThread):
             )
             
             response = ""
-            # Lecture ligne par ligne (permet de tuer le process proprement si besoin)
+            # Read line by line (allows killing the process cleanly if needed)
             for line in self.current_llm_process.stdout:
                 print(line, end='')
                 response += line
@@ -70,36 +70,36 @@ class AudioWorker(QThread):
             if self.current_llm_process.returncode == 0:
                 clean_response = response.strip()
                 
-                # --- PARSING ET EXÉCUTION DES COMMANDES LLM ---
+                # --- LLM COMMAND PARSING AND EXECUTION ---
                 if "[EXEC:" in clean_response:
                     import re
-                    # Regex pour capturer [EXEC: commande]
+                    # Regex to capture [EXEC: command]
                     commands = re.findall(r"\[EXEC:\s*(.*?)\]", clean_response)
                     for cmd in commands:
-                        print(f"Exécution commande LLM : {cmd}")
-                        # On utilise hyprctl dispatch exec pour garantir l'ouverture sur le workspace actif
+                        print(f"Executing LLM command: {cmd}")
+                        # Use hyprctl dispatch exec to ensure opening on the active workspace
                         try:
                             subprocess.Popen(["hyprctl", "dispatch", "exec", cmd])
                         except Exception as e:
-                            print(f"Erreur exécution LLM: {e}")
+                            print(f"LLM execution error: {e}")
                     
-                    # On nettoie la réponse pour l'affichage (optionnel, on peut laisser le texte explicatif)
+                    # Clean the response for display (optional, we can leave the explanatory text)
                     # clean_response = re.sub(r"\[EXEC:.*?\]", "", clean_response).strip()
 
-                conversation_history.append(("Utilisateur", command_part))
+                conversation_history.append(("User", command_part))
                 conversation_history.append(("Claude", clean_response))
                 save_history(conversation_history)
                 self.signal_finished.emit(clean_response)
             else:
-                # Si tué ou erreur
-                print("Processus Claude terminé avec code", self.current_llm_process.returncode)
-                # If it was terminated by user, we already emitted "Annulé."
+                # If killed or error
+                print("Claude process terminated with code", self.current_llm_process.returncode)
+                # If it was terminated by user, we already emitted "Cancelled."
                 if self.current_llm_process.returncode != -9: # -9 is SIGKILL
-                    self.signal_error.emit(f"Claude a terminé avec une erreur: {self.current_llm_process.returncode}")
+                    self.signal_error.emit(f"Claude terminated with an error: {self.current_llm_process.returncode}")
 
 
         except Exception as e:
-            print(f"Erreur thread Claude: {e}")
+            print(f"Claude thread error: {e}")
             self.signal_error.emit(str(e))
         finally:
             self.is_processing_llm = False
@@ -109,122 +109,122 @@ class AudioWorker(QThread):
         global conversation_history
         self.signal_processing.emit(command_part)
         
-        # --- FAST TRACK (Exécution Immédiate sans LLM) ---
+        # --- FAST TRACK (Immediate Execution without LLM) ---
         cmd_lower = command_part.lower()
         
-        # ... (Fast Track code inchangé) ...
-        # Pour les actions d'ouverture, on ferme la fenêtre après (keep_open=False)
-        if "ouvre" in cmd_lower or "lance" in cmd_lower:
+        # ... (Fast Track code unchanged) ...
+        # For opening actions, we close the window after (keep_open=False)
+        if "open" in cmd_lower or "launch" in cmd_lower:
             if "firefox" in cmd_lower:
                 subprocess.Popen(["firefox"])
-                self.signal_finished.emit("Firefox lancé")
-                return "Firefox lancé", False
+                self.signal_finished.emit("Firefox launched")
+                return "Firefox launched", False
             elif "code" in cmd_lower or "vs code" in cmd_lower:
                 subprocess.Popen(["code"])
-                self.signal_finished.emit("VS Code lancé")
-                return "VS Code lancé", False
+                self.signal_finished.emit("VS Code launched")
+                return "VS Code launched", False
             elif "terminal" in cmd_lower or "console" in cmd_lower:
                 subprocess.Popen(["kitty"]) 
-                self.signal_finished.emit("Terminal lancé")
-                return "Terminal lancé", False
-            elif "fichiers" in cmd_lower or "nautilus" in cmd_lower or "dossier" in cmd_lower:
+                self.signal_finished.emit("Terminal launched")
+                return "Terminal launched", False
+            elif "files" in cmd_lower or "nautilus" in cmd_lower or "folder" in cmd_lower:
                 subprocess.Popen(["nautilus"])
-                self.signal_finished.emit("Fichiers lancé")
-                return "Fichiers lancé", False
+                self.signal_finished.emit("Files launched")
+                return "Files launched", False
             
-            # --- Sites Web Courants (Fast Track) ---
+            # --- Common Websites (Fast Track) ---
             elif "youtube" in cmd_lower:
                 subprocess.Popen(["firefox", "https://youtube.com"])
-                self.signal_finished.emit("YouTube ouvert")
-                return "YouTube ouvert", False
+                self.signal_finished.emit("YouTube opened")
+                return "YouTube opened", False
             elif "google" in cmd_lower:
                 subprocess.Popen(["firefox", "https://google.com"])
-                self.signal_finished.emit("Google ouvert")
-                return "Google ouvert", False
+                self.signal_finished.emit("Google opened")
+                return "Google opened", False
             elif "github" in cmd_lower:
                 subprocess.Popen(["firefox", "https://github.com"])
-                self.signal_finished.emit("GitHub ouvert")
-                return "GitHub ouvert", False
+                self.signal_finished.emit("GitHub opened")
+                return "GitHub opened", False
             elif "chatgpt" in cmd_lower or "openai" in cmd_lower:
                 subprocess.Popen(["firefox", "https://chat.openai.com"])
-                self.signal_finished.emit("ChatGPT ouvert")
-                return "ChatGPT ouvert", False
+                self.signal_finished.emit("ChatGPT opened")
+                return "ChatGPT opened", False
             elif "amazon" in cmd_lower:
                 subprocess.Popen(["firefox", "https://amazon.fr"])
-                self.signal_finished.emit("Amazon ouvert")
-                return "Amazon ouvert", False
+                self.signal_finished.emit("Amazon opened")
+                return "Amazon opened", False
             elif "wikipedia" in cmd_lower:
                 subprocess.Popen(["firefox", "https://fr.wikipedia.org"])
-                self.signal_finished.emit("Wikipedia ouvert")
-                return "Wikipedia ouvert", False
+                self.signal_finished.emit("Wikipedia opened")
+                return "Wikipedia opened", False
             
-            # --- Tentative générique de site web ---
+            # --- Generic website attempt ---
             elif ".com" in cmd_lower or ".fr" in cmd_lower or ".org" in cmd_lower or ".net" in cmd_lower:
                 words = cmd_lower.split()
                 for w in words:
                     if "." in w and len(w) > 4:
                         url = w if w.startswith("http") else f"https://{w}"
                         subprocess.Popen(["firefox", url])
-                        self.signal_finished.emit(f"Site {w} ouvert")
-                        return f"Site {w} ouvert", False
+                        self.signal_finished.emit(f"Site {w} opened")
+                        return f"Site {w} opened", False
 
-            # --- Recherche de Projet (Fast Track) ---
-            elif "ouvre le projet" in cmd_lower or "ouvre le dossier" in cmd_lower:
-                # Extraction du nom (tout ce qui est après "projet" ou "dossier")
+            # --- Project Search (Fast Track) ---
+            elif "open the project" in cmd_lower or "open the folder" in cmd_lower:
+                # Extract the name (everything after "project" or "folder")
                 keyword = ""
-                if "projet" in cmd_lower:
-                    keyword = cmd_lower.split("projet")[-1].strip()
-                elif "dossier" in cmd_lower:
-                    keyword = cmd_lower.split("dossier")[-1].strip()
+                if "project" in cmd_lower:
+                    keyword = cmd_lower.split("project")[-1].strip()
+                elif "folder" in cmd_lower:
+                    keyword = cmd_lower.split("folder")[-1].strip()
                 
                 if keyword:
-                    self.signal_processing.emit(f"Recherche de '{keyword}'...")
-                    # Recherche dans le home directory (max depth 4 pour rapidité)
-                    # On cherche un DOSSIER qui contient le mot clé
+                    self.signal_processing.emit(f"Searching for '{keyword}'...")
+                    # Search in the home directory (max depth 4 for speed)
+                    # We search for a FOLDER that contains the keyword
                     find_cmd = ["find", "/home/yusua", "-maxdepth", "4", "-type", "d", "-iname", f"*{keyword}*", "-print", "-quit"]
                     try:
                         result = subprocess.run(find_cmd, capture_output=True, text=True)
                         path = result.stdout.strip()
                         if path:
                             subprocess.Popen(["code", path])
-                            self.signal_finished.emit(f"Projet {keyword} ouvert")
-                            return f"Projet {keyword} ouvert", False
+                            self.signal_finished.emit(f"Project {keyword} opened")
+                            return f"Project {keyword} opened", False
                         else:
-                            # Si pas trouvé, on laisse Claude gérer ou on le dit
+                            # If not found, let Claude handle it or state it
                             pass 
                     except Exception as e:
-                        print(f"Erreur find: {e}")
+                        print(f"Find error: {e}")
         # -------------------------------------------------
         
-        # Construction du prompt avec historique
+        # Build prompt with history
         history_text = ""
         if conversation_history:
-            history_text = "Historique de la conversation :\n"
+            history_text = "Conversation history:\n"
             for role, msg in conversation_history[-20:]: 
                 history_text += f"{role}: {msg}\n"
             history_text += "\n"
         
         system_prompt = (
-            "Tu es Claude, un assistant vocal sur Linux. "
-            "Réponds de manière concise. "
-            "Tu as accès à l'historique de la conversation ci-dessus. "
-            "Si l'utilisateur te demande d'ouvrir une application ou un site web que tu ne peux pas faire directement, "
-            "réponds avec le format EXACT : [EXEC: commande_linux]. "
-            "Exemple : Pour ouvrir Firefox, écris [EXEC: firefox]. "
-            "Exemple : Pour ouvrir un site, écris [EXEC: firefox https://site.com]."
+            "You are Claude, a voice assistant on Linux. "
+            "Respond concisely. "
+            "You have access to the conversation history above. "
+            "If the user asks you to open an application or website that you can't do directly, "
+            "respond with the EXACT format: [EXEC: linux_command]. "
+            "Example: To open Firefox, write [EXEC: firefox]. "
+            "Example: To open a site, write [EXEC: firefox https://site.com]."
         )
         
-        full_prompt = f"{system_prompt}\n\n{history_text}Utilisateur: {command_part}"
+        full_prompt = f"{system_prompt}\n\n{history_text}User: {command_part}"
         print(f"[PROMPT]: {full_prompt}")
         
-        # Lancement ASYNCHRONE
+        # ASYNCHRONOUS launch
         t = threading.Thread(target=self.run_claude_async, args=(full_prompt, command_part))
         t.start()
         
-        return "Traitement en cours...", False # On sort de la boucle d'écoute
+        return "Processing...", False # Exit the listening loop
 
     def listen_and_process(self):
-        # Initialisation de Vosk pour le mot-clé (LOCAL et RAPIDE)
+        # Initialize Vosk for the keyword (LOCAL and FAST)
         from vosk import Model, KaldiRecognizer
         import json
         import pyaudio
@@ -235,37 +235,37 @@ class AudioWorker(QThread):
         import os
         import wave
         
-        print("Chargement du modèle Vosk (Wake Word)...")
+        print("Loading Vosk model (Wake Word)...")
         try:
             model = Model("models/fr")
             rec = KaldiRecognizer(model, 16000)
         except Exception as e:
-            self.signal_error.emit(f"Erreur modèle Vosk: {e}")
+            self.signal_error.emit(f"Vosk model error: {e}")
             return
 
-        print("Chargement du modèle Whisper (Transcription)...")
+        print("Loading Whisper model (Transcription)...")
         try:
-            # On utilise le modèle 'base' qui est un bon compromis vitesse/précision
-            # 'small' est mieux mais plus lent. 'tiny' est très rapide mais moins précis.
+            # We use the 'base' model which is a good speed/accuracy compromise
+            # 'small' is better but slower. 'tiny' is very fast but less accurate.
             whisper_model = whisper.load_model("base")
         except Exception as e:
-            self.signal_error.emit(f"Erreur modèle Whisper: {e}")
+            self.signal_error.emit(f"Whisper model error: {e}")
             return
 
         p = pyaudio.PyAudio()
         stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
         stream.start_stream()
         
-        print("Prêt (Vosk + Whisper) !")
+        print("Ready (Vosk + Whisper)!")
         
         while True:
-            print("En attente du mot clé 'Claude' (Local)...")
+            print("Waiting for wake word 'Claude' (Local)...")
             
-            # 1. ATTENTE DU WAKE WORD (Toujours avec Vosk pour la rapidité)
+            # 1. WAITING FOR WAKE WORD (Always with Vosk for speed)
             while True:
                 data = stream.read(2000, exception_on_overflow=False)
                 if rec.AcceptWaveform(data):
-                    rec.Result() # IMPORTANT: Vider le buffer pour éviter saturation mémoire
+                    rec.Result() # IMPORTANT: Empty the buffer to avoid memory saturation
                 else:
                     partial = json.loads(rec.PartialResult())
                     partial_text = partial.get("partial", "")
@@ -274,36 +274,36 @@ class AudioWorker(QThread):
                         rec.Reset()
                         break
             
-            # 2. BOUCLE DE CONVERSATION
+            # 2. CONVERSATION LOOP
             in_conversation = True
-            command_buffer = "" # Buffer pour accumuler le texte (Mode Dictée)
+            command_buffer = "" # Buffer to accumulate text (Dictation Mode)
             
             while in_conversation:
-                # IMPORTANT : On signale qu'on écoute à chaque tour de boucle
-                # SAUF si on est en train de traiter une réponse LLM
+                # IMPORTANT: Signal that we're listening at each loop iteration
+                # EXCEPT if we're processing an LLM response
                 if not self.is_processing_llm:
                     self.signal_listening.emit()
                 
-                print("Écoute de la commande (Conversation)...")
+                print("Listening for command (Conversation)...")
                 
                 command_text = ""
                 start_listen_time = time.time()
                 last_partial = ""
                 last_change_time = time.time()
                 
-                # Buffer audio pour Whisper
+                # Audio buffer for Whisper
                 audio_frames = []
                 
                 rec.Reset()
                 
                 while True:
                     data = stream.read(1000, exception_on_overflow=False)
-                    audio_frames.append(data) # On enregistre tout
+                    audio_frames.append(data) # Record everything
                     
-                    # On utilise Vosk UNIQUEMENT pour le VAD (Détection de parole/silence)
-                    # et pour les interruptions rapides (Merci/Stop)
+                    # Use Vosk ONLY for VAD (Voice Activity Detection)
+                    # and for quick interruptions (Thanks/Stop)
                     if rec.AcceptWaveform(data):
-                        # On ignore le résultat final de Vosk, on veut juste savoir que c'est fini
+                        # Ignore Vosk final result, we just want to know it's finished
                         pass
                     else:
                         partial_json = json.loads(rec.PartialResult())
@@ -313,20 +313,20 @@ class AudioWorker(QThread):
                             if partial != last_partial:
                                 last_partial = partial
                                 last_change_time = time.time()
-                                # print(f"Partiel Vosk (VAD): {partial}")
+                                # print(f"Vosk partial (VAD): {partial}")
                                 
-                                # INTERRUPTION PENDANT LE TRAITEMENT (Priorité Absolue)
+                                # INTERRUPTION DURING PROCESSING (Absolute Priority)
                                 if self.is_processing_llm:
                                     check_interrupt = partial.lower()
-                                    if "merci" in check_interrupt or "arrête" in check_interrupt or "stop" in check_interrupt or "ok claude" in check_interrupt:
-                                        print("INTERRUPTION DÉTECTÉE !")
+                                    if "thanks" in check_interrupt or "stop" in check_interrupt or "ok claude" in check_interrupt:
+                                        print("INTERRUPTION DETECTED!")
                                         if self.current_llm_process:
                                             self.current_llm_process.terminate()
                                             self.current_llm_process = None
                                         self.is_processing_llm = False
-                                        self.signal_finished.emit("Annulé.")
+                                        self.signal_finished.emit("Cancelled.")
                                         time.sleep(0.5)
-                                        if "merci" in check_interrupt or "arrête" in check_interrupt:
+                                        if "thanks" in check_interrupt or "stop" in check_interrupt:
                                             in_conversation = False
                                             self.signal_error.emit("STOP_OVERLAY")
                                             break
@@ -336,29 +336,29 @@ class AudioWorker(QThread):
                                         continue
 
                             else:
-                                # VAD: 1.2s de silence = fin de phrase
+                                # VAD: 1.2s of silence = end of sentence
                                 if time.time() - last_change_time > 1.2:
-                                    print("Fin VAD (Silence détecté)")
+                                    print("VAD end (Silence detected)")
                                     break
                     
                     # Timeout: 20s max
                     if time.time() - start_listen_time > 20:
-                        print("Timeout écoute")
+                        print("Listening timeout")
                         break
                 
-                # Si on a cassé la boucle à cause d'une interruption "Merci", on sort
+                # If we broke the loop due to a "Thanks" interruption, exit
                 if not in_conversation:
                     break
 
-                # TRANSCRIPTION WHISPER
+                # WHISPER TRANSCRIPTION
                 if audio_frames:
-                    print("Transcription Whisper en cours...")
-                    # Sauvegarde temporaire du WAV
+                    print("Whisper transcription in progress...")
+                    # Temporary WAV save
                     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
                         temp_wav_path = temp_wav.name
                     
                     try:
-                        # Écriture du fichier WAV
+                        # Write WAV file
                         wf = wave.open(temp_wav_path, 'wb')
                         wf.setnchannels(1)
                         wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
@@ -367,14 +367,14 @@ class AudioWorker(QThread):
                         wf.close()
                         
                         # Transcription
-                        result = whisper_model.transcribe(temp_wav_path, fp16=False, language='fr') # On peut forcer 'fr' ou laisser auto
-                        # Note: fp16=False pour éviter warning CPU
+                        result = whisper_model.transcribe(temp_wav_path, fp16=False, language='en') # Can force 'en' or leave auto
+                        # Note: fp16=False to avoid CPU warning
                         
                         command_text = result["text"].strip()
-                        print(f"Whisper a entendu : {command_text}")
+                        print(f"Whisper heard: {command_text}")
                         
                     except Exception as e:
-                        print(f"Erreur Transcription Whisper: {e}")
+                        print(f"Whisper Transcription Error: {e}")
                     finally:
                         if os.path.exists(temp_wav_path):
                             os.remove(temp_wav_path)
@@ -382,60 +382,60 @@ class AudioWorker(QThread):
                 if command_text:
                     cmd_lower = command_text.lower()
                     
-                    # Si traitement en cours, on ignore (sauf interruption déjà gérée)
+                    # If processing in progress, ignore (except interruption already handled)
                     if self.is_processing_llm:
                         continue
 
-                    # 1. GESTION DES COMMANDES D'ARRÊT IMMÉDIAT
-                    if "arrête" in cmd_lower or "stop" in cmd_lower or "ferme" in cmd_lower or "merci" in cmd_lower:
-                        print("Commande d'arrêt détectée.")
-                        self.signal_finished.emit("Au revoir !")
+                    # 1. IMMEDIATE STOP COMMAND HANDLING
+                    if "stop" in cmd_lower or "close" in cmd_lower or "thanks" in cmd_lower:
+                        print("Stop command detected.")
+                        self.signal_finished.emit("Goodbye!")
                         time.sleep(1.5)
                         in_conversation = False
                         self.signal_error.emit("STOP_OVERLAY")
                         break
                     
-                    # 2. MODE DICTÉE STRICT : On attend TOUJOURS le trigger
+                    # 2. STRICT DICTATION MODE: Always wait for trigger
                     
-                    # Vérification du TRIGGER "Fin Claude" (Prioritaire)
-                    # Whisper est plus précis, donc on peut être plus strict sur les triggers
-                    has_trigger = "fin claude" in cmd_lower or "c'est tout" in cmd_lower or "envoyer" in cmd_lower or "terminé" in cmd_lower
+                    # Check for TRIGGER "End Claude" (Priority)
+                    # Whisper is more accurate, so we can be stricter on triggers
+                    has_trigger = "end claude" in cmd_lower or "that's all" in cmd_lower or "send" in cmd_lower or "done" in cmd_lower
                     
-                    # On ajoute le texte au buffer
+                    # Add text to buffer
                     if command_buffer:
                         command_buffer += " " + command_text
                     else:
                         command_buffer = command_text
                     
-                    # On met à jour l'UI
+                    # Update the UI
                     self.signal_recognized.emit(command_buffer + "...")
                     
                     if has_trigger:
-                        # On nettoie le trigger
+                        # Clean the trigger
                         final_command = command_buffer
-                        # Nettoyage un peu plus smart avec regex pour Whisper qui met de la ponctuation
+                        # Smarter cleaning with regex for Whisper which adds punctuation
                         import re
-                        triggers = ["fin claude", "c'est tout", "envoyer", "terminé"]
+                        triggers = ["end claude", "that's all", "send", "done"]
                         for t in triggers:
                             final_command = re.sub(t, "", final_command, flags=re.IGNORECASE)
                         
                         final_command = final_command.strip()
-                        # Nettoyage ponctuation finale
+                        # Clean final punctuation
                         final_command = final_command.rstrip(".,!?")
                         
                         if not final_command:
                             pass 
                         
-                        print(f"Commande validée (Trigger) : {final_command}")
+                        print(f"Command validated (Trigger): {final_command}")
                         self.signal_recognized.emit(final_command)
                         
                         response_text, keep_open = self.process_command(final_command)
                         command_buffer = "" 
                         
-                        # MÊME LOGIQUE DE SORTIE
+                        # SAME EXIT LOGIC
                         if not keep_open:
-                            if response_text == "Traitement en cours...":
-                                print("LLM lancé, on sort de la boucle d'écoute")
+                            if response_text == "Processing...":
+                                print("LLM launched, exiting listening loop")
                                 in_conversation = False
                                 break
                             else:
@@ -447,18 +447,18 @@ class AudioWorker(QThread):
                         in_conversation = False
                         break
                     else:
-                        print(f"Mode Dictée : Accumulation ({len(command_buffer.split())} mots)...")
-                        # On continue d'écouter TANT QUE pas de trigger
+                        print(f"Dictation Mode: Accumulating ({len(command_buffer.split())} words)...")
+                        # Continue listening AS LONG AS no trigger
                         
                 else:
-                    # Timeout (Rien entendu)
+                    # Timeout (Nothing heard)
                     if not self.is_processing_llm:
                         if not command_buffer:
-                            print("Timeout conversation (Buffer vide).")
+                            print("Conversation timeout (Empty buffer).")
                             in_conversation = False
                             self.signal_error.emit("STOP_OVERLAY")
                         else:
-                            print("Timeout mais buffer non vide, on attend encore...")
+                            print("Timeout but buffer not empty, waiting more...")
             
-            # Fin de conversation, on reset tout pour le prochain Wake Word
+            # End of conversation, reset everything for the next Wake Word
             rec.Reset()

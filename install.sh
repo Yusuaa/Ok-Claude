@@ -1,88 +1,87 @@
 #!/bin/bash
 
-# Couleurs pour le terminal
+# Terminal colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0;0m' # No Color
 
-echo -e "${BLUE}=== Installation de Claude Overlay ===${NC}"
+echo -e "${BLUE}=== Claude Overlay Installation ===${NC}"
 
-# 1. Vérification des dépendances système
-echo -e "\n${BLUE}[1/5] Vérification des dépendances système...${NC}"
+# 1. Check system dependencies
+echo -e "\n${BLUE}[1/5] Checking system dependencies...${NC}"
 
 check_command() {
     if ! command -v $1 &> /dev/null; then
-        echo -e "${RED}Erreur: $1 n'est pas installé.${NC}"
+        echo -e "${RED}Error: $1 is not installed.${NC}"
         return 1
     else
-        echo -e "${GREEN}✓ $1 détecté${NC}"
+        echo -e "${GREEN}✓ $1 detected${NC}"
         return 0
     fi
 }
 
-# Liste des paquets requis (adapté pour Debian/Ubuntu/Arch)
-# On vérifie juste les commandes critiques
+# List of required packages (adapted for Debian/Ubuntu/Arch)
+# We only check critical commands
 check_command python3 || exit 1
-check_command ffmpeg || echo -e "${RED}Attention: ffmpeg manquant. Requis pour Whisper.${NC}"
-check_command claude || echo -e "${RED}Attention: CLI 'claude' manquant. Requis pour l'IA.${NC}"
+check_command ffmpeg || echo -e "${RED}Warning: ffmpeg missing. Required for Whisper.${NC}"
+check_command claude || echo -e "${RED}Warning: CLI 'claude' missing. Required for AI.${NC}"
 
-# 2. Création de l'environnement virtuel
-echo -e "\n${BLUE}[2/5] Configuration de l'environnement Python...${NC}"
+# 2. Create virtual environment
+echo -e "\n${BLUE}[2/5] Configuring Python environment...${NC}"
 if [ ! -d "venv" ]; then
-    echo "Création du venv..."
-    python3 -m venv venv
+    echo "Creating venv..."
 else
-    echo "venv existe déjà."
+    echo "venv already exists."
 fi
 
-# Activation du venv
+# Activate venv
 source venv/bin/activate
 
-# 3. Installation des dépendances Python
-echo -e "\n${BLUE}[3/5] Installation des librairies Python...${NC}"
+# 3. Install Python dependencies
+echo -e "\n${BLUE}[3/5] Installing Python libraries...${NC}"
 pip install --upgrade pip
 if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt
 else
-    echo -e "${RED}Erreur: requirements.txt introuvable!${NC}"
+    echo -e "${RED}Error: requirements.txt not found!${NC}"
     exit 1
 fi
 
-# 4. Téléchargement du modèle Vosk (si absent)
-echo -e "\n${BLUE}[4/5] Vérification du modèle vocal (Vosk)...${NC}"
+# 4. Download Vosk model (if absent)
+echo -e "\n${BLUE}[4/5] Checking voice model (Vosk)...${NC}"
 MODEL_DIR="models"
 MODEL_NAME="fr"
 MODEL_PATH="$MODEL_DIR/$MODEL_NAME"
 
 if [ ! -d "$MODEL_PATH" ]; then
-    echo "Le modèle 'fr' est manquant."
+    echo "The 'fr' model is missing."
     mkdir -p "$MODEL_DIR"
     
-    # URL du modèle français léger (vosk-model-small-fr-0.22)
-    # On peut changer pour un plus gros si besoin
+    # URL of the lightweight French model (vosk-model-small-fr-0.22)
+    # Can change to a larger one if needed
     VOSK_URL="https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip"
     ZIP_FILE="model.zip"
     
-    echo "Téléchargement de $VOSK_URL ..."
+    echo "Downloading from $VOSK_URL ..."
     wget $VOSK_URL -O $ZIP_FILE
     
-    echo "Extraction..."
+    echo "Extracting..."
     unzip -q $ZIP_FILE
     mv vosk-model-small-fr-0.22 "$MODEL_PATH"
     rm $ZIP_FILE
     
-    echo -e "${GREEN}Modèle installé dans $MODEL_PATH${NC}"
+    echo -e "${GREEN}Model installed in $MODEL_PATH${NC}"
 else
-    echo -e "${GREEN}✓ Modèle Vosk présent${NC}"
+    echo -e "${GREEN}✓ Vosk model present${NC}"
 fi
 
-# 5. Fin
-echo -e "\n${BLUE}[5/5] Installation terminée !${NC}"
-echo -e "Pour lancer l'assistant :"
+# 5. Done
+echo -e "\n${BLUE}[5/5] Installation complete!${NC}"
+echo -e "To launch the assistant:"
 echo -e "  ${GREEN}source venv/bin/activate${NC}"
 echo -e "  ${GREEN}python main.py${NC}"
-echo -e "\nNote: Assurez-vous d'avoir configuré votre clé API Claude via 'claude login' si ce n'est pas déjà fait."
+echo -e "\nNote: Make sure you have configured your Claude API key via 'claude login' if not already done."
 
-# Rendre le script exécutable lui-même (au cas où)
+# Make the script executable itself (just in case)
 chmod +x "$0"
